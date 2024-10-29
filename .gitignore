@@ -5,9 +5,14 @@ __pycache__/
 
 # Virtual Environment
 venv/
+migrations/
+instance/
+
+cookie.txt
 
 # Environment variables file
 .env
+.flaskenv
 
 # Flask and SQLAlchemy-related files
 *.sqlite3

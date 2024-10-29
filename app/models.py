@@ -1,7 +1,8 @@
-from . import db
 from flask_login import UserMixin
 from datetime import datetime
+from flask_bcrypt import generate_password_hash, check_password_hash
 
+from . import db
 
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
@@ -13,6 +14,13 @@ class User(db.Model, UserMixin):
 
     # Relationships
     games = db.relationship('GameSession', backref='user', lazy=True)
+
+    # Methods for password hashing and checking
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password).decode('utf-8')
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 class GameSession(db.Model):
     __tablename__ = 'game_sessions'
