@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+
+# Environment variables file
+.env
+
+# Flask and SQLAlchemy-related files
+*.sqlite3
+*.db
+migrations/
+
+# Logs
+*.log
+
+# macOS files
+.DS_Store
+
+# Python egg files
+*.egg-info/
+.eggs/
+
+# IDE configurations (optional, depending on your setup)
+.idea/
+.vscode/
