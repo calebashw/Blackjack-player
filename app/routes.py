@@ -11,7 +11,9 @@ main = Blueprint('main', __name__)
 def place_bet():
     """Allow the player to place a bet for the game."""
     data = request.get_json()
+    print("Received data:", data)  # Debugging line to check incoming data
     bet_amount = data.get('bet')
+    print("Bet amount:", bet_amount)  # Debugging line to check extracted bet amount
 
     # Validate bet amount
     if not isinstance(bet_amount, int) or bet_amount < 10 or bet_amount > 100:

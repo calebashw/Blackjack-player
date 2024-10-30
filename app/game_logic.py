@@ -1,4 +1,5 @@
 import random
+from .models import GameSession
 
 # Card values dictionary
 card_values = {
