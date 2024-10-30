@@ -58,35 +58,36 @@ def start_game_route():
 @main.route('/hit', methods=['POST'])
 @login_required
 def hit():
-    """Allow the player to take a hit and receive another card."""
+    data = request.get_json()
+    hand_type = data.get('hand', 'original')  # Default to original hand if not specified
+
     game_session = GameSession.query.filter_by(user_id=current_user.id).order_by(GameSession.timestamp.desc()).first()
     if not game_session:
         return jsonify({'error': 'No active game session found. Please start a new game.'}), 400
 
-    # Continue game with hit logic
-    deck = game_session.deck
-    player_hand = game_session.player_hand
-    player_hand = play_turn(player_hand, deck)
-    game_session.player_hand = player_hand
+    # Select the hand to hit
+    hand = game_session.player_hand if hand_type == 'original' else game_session.split_hand
+    hand.append(deal_card(game_session.deck))
+    if hand_type == 'original':
+        game_session.player_hand = hand
+    else:
+        game_session.split_hand = hand
     db.session.commit()
 
-    # Check for bust
-    if is_bust(player_hand):
-        outcome = "bust"
-        game_session.record_outcome(outcome, current_user)
-        db.session.commit()
+    if is_bust(hand):
         return jsonify({
-            'player_hand': player_hand,
-            'player_value': calculate_hand_value(player_hand),
-            'outcome': outcome,
+            'hand_type': hand_type,
+            'hand': hand,
+            'outcome': 'bust',
             'remaining_bankroll': current_user.bankroll
         })
 
-    # If not bust, return updated hand
     return jsonify({
-        'player_hand': player_hand,
-        'player_value': calculate_hand_value(player_hand)
+        'hand_type': hand_type,
+        'hand': hand,
+        'value': calculate_hand_value(hand)
     })
+
 
 @main.route('/stand', methods=['POST'])
 @login_required
@@ -116,5 +117,72 @@ def stand():
         'dealer_hand': dealer_hand,
         'dealer_value': calculate_hand_value(dealer_hand),
         'outcome': outcome,
+        'remaining_bankroll': current_user.bankroll
+    })
+
+@main.route('/double-down', methods=['POST'])
+@login_required
+def double_down():
+    """Double the player's bet and give one card, ending their turn."""
+    game_session = GameSession.query.filter_by(user_id=current_user.id).order_by(GameSession.timestamp.desc()).first()
+    if not game_session or game_session.doubled_down:
+        return jsonify({'error': 'Invalid operation or already doubled down.'}), 400
+
+    # Double the bet amount and deduct from bankroll
+    game_session.bet *= 2
+    current_user.bankroll -= game_session.bet // 2  # Only deduct the additional bet
+    game_session.doubled_down = True
+
+    # Deal one final card to the player
+    deck = game_session.deck
+    player_hand = game_session.player_hand
+    player_hand.append(deal_card(deck))
+    game_session.player_hand = player_hand
+    db.session.commit()
+
+    # Check if the player busts after doubling down
+    if is_bust(player_hand):
+        outcome = "bust"
+    else:
+        # If not bust, handle dealer's turn immediately
+        dealer_hand = game_session.dealer_hand
+        while calculate_hand_value(dealer_hand) < 17:
+            dealer_hand.append(deal_card(deck))
+        outcome = determine_outcome(player_hand, dealer_hand, current_user, game_session)
+        game_session.dealer_hand = dealer_hand
+        game_session.outcome = outcome
+
+    db.session.commit()
+
+    return jsonify({
+        'player_hand': player_hand,
+        'player_value': calculate_hand_value(player_hand),
+        'dealer_hand': game_session.dealer_hand,
+        'dealer_value': calculate_hand_value(game_session.dealer_hand),
+        'outcome': outcome,
+        'remaining_bankroll': current_user.bankroll
+    })
+
+
+@main.route('/split', methods=['POST'])
+@login_required
+def split():
+    """Split the player's hand into two separate hands if possible."""
+    game_session = GameSession.query.filter_by(user_id=current_user.id).order_by(GameSession.timestamp.desc()).first()
+    if not game_session or game_session.split_hand:
+        return jsonify({'error': 'Invalid operation or hand already split.'}), 400
+
+    player_hand = game_session.player_hand
+    if len(player_hand) != 2 or player_hand[0] != player_hand[1]:
+        return jsonify({'error': 'Cannot split. Cards must be identical.'}), 400
+
+    # Split the hand into two and deduct an additional bet
+    game_session.split_hand = [player_hand.pop()]  # The second hand starts with one of the pair
+    current_user.bankroll -= game_session.bet
+    db.session.commit()
+
+    return jsonify({
+        'original_hand': player_hand,
+        'split_hand': game_session.split_hand,
         'remaining_bankroll': current_user.bankroll
     })

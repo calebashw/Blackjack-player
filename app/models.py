@@ -1,7 +1,6 @@
 from flask_login import UserMixin
 from datetime import datetime
 from flask_bcrypt import generate_password_hash, check_password_hash
-
 from . import db
 
 class User(db.Model, UserMixin):
@@ -15,7 +14,6 @@ class User(db.Model, UserMixin):
     # Relationships
     games = db.relationship('GameSession', backref='user', lazy=True)
 
-    # Methods for password hashing and checking
     def set_password(self, password):
         self.password_hash = generate_password_hash(password).decode('utf-8')
 
@@ -30,6 +28,8 @@ class GameSession(db.Model):
     bet = db.Column(db.Integer)
     final_bankroll = db.Column(db.Integer)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    doubled_down = db.Column(db.Boolean, default=False)  # New column for doubling down
+    split_hand = db.Column(db.PickleType, nullable=True)  # New column to store split hand (if any)
 
     def record_outcome(self, outcome, user):
         """Update session and user based on outcome."""

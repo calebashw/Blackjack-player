@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
 from .config import Config
-from .models import User
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -32,4 +31,6 @@ def create_app():
 
 @login_manager.user_loader
 def load_user(user_id):
+    # Import User here to avoid circular import
+    from .models import User
     return User.query.get(int(user_id))
