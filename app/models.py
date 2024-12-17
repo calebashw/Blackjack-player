@@ -12,13 +12,16 @@ class User(db.Model, UserMixin):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
-    games = db.relationship('GameSession', backref='user', lazy=True)
+    games = db.relationship('GameSession', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password).decode('utf-8')
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f"<User {self.username}>"
 
 class GameSession(db.Model):
     __tablename__ = 'game_sessions'
@@ -40,3 +43,6 @@ class GameSession(db.Model):
             user.bankroll += self.bet  # Bet is refunded on a tie
         # Save the final bankroll in this session
         self.final_bankroll = user.bankroll
+
+    def __repr__(self):
+        return f"<GameSession {self.id} - User {self.user_id} - Outcome {self.outcome}>"
